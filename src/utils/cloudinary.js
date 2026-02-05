@@ -1,24 +1,24 @@
-import { v2 as cloudinary, v2 } from "cloudinary";
-
+import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
-// cloudinary.config({
-//   cloud_name: process.env.CLOUDINARY_NAME,
-//   api_key: process.env.CLOUDINARY_API_KEY,
-//   api_secret: process.env.CLOUDINARY_API_SECRET,
-// });
 
-const uploadOnCloudinary = async (localFilePath) => {
+const rootFolder = "vyom-realm-backend";
+
+const uploadOnCloudinary = async (localFilePath, subFolder = "") => {
   try {
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_NAME,
       api_key: process.env.CLOUDINARY_API_KEY,
       api_secret: process.env.CLOUDINARY_API_SECRET,
     });
+
     if (!localFilePath) return null;
     // upload the file on cloudinary.
 
+    const finalFolder = subFolder ? `${rootFolder}/${subFolder}` : rootFolder;
+
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
+      folder: finalFolder,
     });
     // the file has been uploaded
     // console.log("file is uploaded on cloudinary", response.url);
@@ -31,7 +31,27 @@ const uploadOnCloudinary = async (localFilePath) => {
   }
 };
 
-export { uploadOnCloudinary };
+const deleteFromCloudinary = async (public_id, resource_type = "image") => {
+  try {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+
+    if (!public_id) return null;
+
+    const response = await cloudinary.uploader.destroy(public_id, {
+      resource_type: resource_type,
+    });
+
+    return response;
+  } catch (error) {
+    console.log("Error while deleting the file: ", error);
+    return null;
+  }
+};
+export { uploadOnCloudinary, deleteFromCloudinary };
 
 // cloudinary.v2.uploader.upload(
 //   "",
