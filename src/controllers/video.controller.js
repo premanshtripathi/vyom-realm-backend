@@ -40,7 +40,8 @@ const publishAVideo = asyncHandler(async (req, res) => {
   );
 
   if (!videoFile) {
-    if (thumbnailFile) await deleteFromCloudinary(thumbnailFile.public_id, "image");
+    if (thumbnailFile)
+      await deleteFromCloudinary(thumbnailFile.public_id, "image");
     throw new ApiError(
       400,
       "Problem in uploading video file, please try again"
@@ -76,7 +77,8 @@ const publishAVideo = asyncHandler(async (req, res) => {
       .json(new ApiResponse(201, video, "Video published successfully."));
   } catch (error) {
     if (videoFile) await deleteFromCloudinary(videoFile.public_id, "video");
-    if (thumbnailFile) await deleteFromCloudinary(thumbnailFile.public_id, "image");
+    if (thumbnailFile)
+      await deleteFromCloudinary(thumbnailFile.public_id, "image");
     throw new ApiError(500, "Something went wrong while publishing the video!");
   }
 });
@@ -112,7 +114,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Video does not exist!");
   }
 
-  if (video.owner?.toString() !== req.user._id.toString()) {
+  if (video.owner?.toString() !== req.user?._id?.toString()) {
     throw new ApiError(403, "You are not authorized to delete this video!");
   }
 
@@ -132,6 +134,39 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+
+  const video = await Video.findById(videoId);
+
+  if (!video) {
+    throw new ApiError(404, "Video does not exist!");
+  }
+
+  if (video.owner?.toString() !== req.user?._id?.toString()) {
+    throw new ApiError(
+      403,
+      "You are not authorized to publish status of this video!"
+    );
+  }
+
+  try {
+    video.isPublished = !video.isPublished;
+    const updatedVideo = await video.save({ validateBeforeSave: false });
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          updatedVideo,
+          `Video is now ${updatedVideo.isPublished ? "Published" : "Unpublished"}`
+        )
+      );
+  } catch (error) {
+    throw new ApiError(
+      500,
+      "Something went wrong while toggling the publish status."
+    );
+  }
 });
 
 export {
