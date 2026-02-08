@@ -12,6 +12,74 @@ import {
 const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
   //TODO: get all videos based on query, sort, pagination
+  const pipeline = [];
+
+  if (query) {
+    pipeline.push({
+      $match: { $text: { $search: query } },
+    });
+  }
+
+  const matchStage = {};
+
+  if (userId && mongoose.isValidObjectId(userId)) {
+    matchStage.owner = new mongoose.Types.ObjectId(userId);
+  } else if (userId) {
+    throw new ApiError(400, "Invalid user Id!");
+  }
+
+  matchStage.isPublished = true;
+
+  pipeline.push({ $match: matchStage });
+
+  if (query && !sortBy) {
+    pipeline.push({
+      $sort: {
+        score: { $meta: "textScore" },
+        createdAt: -1,
+      },
+    });
+  } else if (sortBy && sortType) {
+    pipeline.push({ $sort: { [sortBy]: sortType === "asc" ? 1 : -1 } });
+  } else {
+    pipeline.push({ $sort: { createdAt: -1 } });
+  }
+
+  pipeline.push({
+    $lookup: {
+      from: "users",
+      localField: "owner",
+      foreignField: "_id",
+      as: "ownerDetails",
+      pipeline: [{ $project: { username: 1, fullname: 1, avatar: 1 } }],
+    },
+  });
+
+  pipeline.push({
+    $unwind: { path: "$ownerDetails", preserveNullAndEmptyArrays: true },
+  });
+
+  const options = {
+    page: parseInt(page, 10),
+    limit: Math.min(50, parseInt(limit, 10)),
+    customLabels: {
+      docs: "videos",
+      totalDocs: "totalVideos",
+    },
+  };
+
+  const result = await Video.aggregatePaginate(
+    Video.aggregate(pipeline),
+    options
+  );
+
+  if (!result) {
+    throw new ApiError(500, "Something went wrong while fetching videos!");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, result, "Videos fetched successfully"));
 });
 
 const publishAVideo = asyncHandler(async (req, res) => {

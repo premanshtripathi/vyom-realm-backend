@@ -47,6 +47,15 @@ const videoSchema = new Schema(
   { timestamps: true }
 );
 
+// 1. Text Index: For search queries
+videoSchema.index({ title: "text", description: "text" });
+
+// 2. Feed Index: For browsing all published videos (sorted by date)
+videoSchema.index({ isPublished: 1, createdAt: -1 });
+
+// 3. Profile Index: For browsing a specific user's videos
+videoSchema.index({ owner: 1, isPublished: 1, createdAt: -1 });
+
 videoSchema.plugin(mongooseAggregatePaginate);
 
 export const Video = mongoose.model("Video", videoSchema);
