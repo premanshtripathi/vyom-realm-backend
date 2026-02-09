@@ -16,16 +16,16 @@ const videoSchema = new Schema(
       required: [true, "Video URL is required!"],
     },
     videoPublicId: {
-        type: String,
-        required: [true, "Video Public Id is required"]
+      type: String,
+      required: [true, "Video Public Id is required"],
     },
     thumbnailUrl: {
-        type: String, // cloudinary URL.
-        required: [true, "Thumbnail URL is required!"],
+      type: String, // cloudinary URL.
+      required: [true, "Thumbnail URL is required!"],
     },
     thumbnailPublicId: {
-        type: String,
-        required: [true, "Thumbnail Public Id is required"]
+      type: String,
+      required: [true, "Thumbnail Public Id is required"],
     },
     duration: {
       type: Number, // from cloudinary.
@@ -47,13 +47,10 @@ const videoSchema = new Schema(
   { timestamps: true }
 );
 
-// 1. Text Index: For search queries
-videoSchema.index({ title: "text", description: "text" });
-
-// 2. Feed Index: For browsing all published videos (sorted by date)
+// Feed Index: For browsing all published videos (sorted by date)
 videoSchema.index({ isPublished: 1, createdAt: -1 });
 
-// 3. Profile Index: For browsing a specific user's videos
+// Profile Index: For browsing a specific user's videos
 videoSchema.index({ owner: 1, isPublished: 1, createdAt: -1 });
 
 videoSchema.plugin(mongooseAggregatePaginate);

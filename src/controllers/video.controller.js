@@ -11,12 +11,27 @@ import {
 
 const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
-  //TODO: get all videos based on query, sort, pagination
   const pipeline = [];
 
   if (query) {
     pipeline.push({
-      $match: { $text: { $search: query } },
+      $search: {
+        index: "default",
+        text: {
+          query: query,
+          path: ["title", "description"],
+          fuzzy: {
+            maxEdits: 2,
+            prefixLength: 1,
+          },
+        },
+      },
+    });
+
+    pipeline.push({
+      $addFields: {
+        score: { $meta: "searchScore" },
+      },
     });
   }
 
@@ -35,7 +50,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
   if (query && !sortBy) {
     pipeline.push({
       $sort: {
-        score: { $meta: "textScore" },
+        score: -1,
         createdAt: -1,
       },
     });
@@ -171,7 +186,6 @@ const getVideoById = asyncHandler(async (req, res) => {
 
 const updateVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-  //TODO: update video details like title, description, thumbnail
   const title = req.body.title || null;
   const description = req.body?.description || null;
   const thumbnailLocalPath = req.file?.path || null;
