@@ -17,13 +17,31 @@ const getAllVideos = asyncHandler(async (req, res) => {
     pipeline.push({
       $search: {
         index: "default",
-        text: {
-          query: query,
-          path: ["title", "description"],
-          fuzzy: {
-            maxEdits: 2,
-            prefixLength: 1,
-          },
+        compound: {
+          should: [
+            {
+              text: {
+                query: query,
+                path: "title",
+                score: { boost: { value: 3 } },
+                fuzzy: {
+                  maxEdits: 2,
+                  prefixLength: 1,
+                },
+              },
+            },
+            {
+              text: {
+                query: query,
+                path: "description",
+                score: { boost: { value: 1 } },
+                fuzzy: {
+                  maxEdits: 2,
+                  prefixLength: 1,
+                },
+              },
+            },
+          ],
         },
       },
     });
