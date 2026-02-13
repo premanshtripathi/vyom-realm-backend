@@ -30,7 +30,56 @@ const createTweet = asyncHandler(async (req, res) => {
 });
 
 const getUserTweets = asyncHandler(async (req, res) => {
-  // TODO: get user tweets
+  const userId = req.params?.userId;
+  const { page = 1, limit = 10 } = req.query;
+
+  if (!isValidObjectId(userId)) {
+    throw new ApiError(400, "Invalid User Id!");
+  }
+
+  const userDetails = await User.findById(userId).select(
+    "_id fullname username avatar"
+  );
+
+  if (!userDetails) {
+    throw new ApiError(404, "User does not exist!");
+  }
+
+  const pipeline = [];
+
+  pipeline.push({
+    $match: {
+      owner: new mongoose.Types.ObjectId(userId),
+    },
+  });
+
+  pipeline.push({
+    $sort: { createdAt: -1 },
+  });
+
+  const options = {
+    page: parseInt(page, 10),
+    limit: Math.min(50, parseInt(limit)),
+    customLabels: {
+      docs: "tweets",
+      totalDocs: "totalTweets",
+    },
+  };
+
+  const result = await Tweet.aggregatePaginate(
+    Tweet.aggregate(pipeline),
+    options
+  );
+
+  result.userDetails = userDetails;
+
+  if (!result) {
+    throw new ApiError(500, "Something went wrong while fetching the tweets!");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, result, "Tweets fetched successfully."));
 });
 
 const updateTweet = asyncHandler(async (req, res) => {
@@ -81,7 +130,38 @@ const updateTweet = asyncHandler(async (req, res) => {
 });
 
 const deleteTweet = asyncHandler(async (req, res) => {
-  //TODO: delete tweet
+  const tweetId = req.params?.tweetId;
+
+  if (!isValidObjectId(tweetId)) {
+    throw new ApiError(400, "Invalid Tweet Id!");
+  }
+
+  const tweet = await Tweet.findById(tweetId);
+
+  if (!tweet) {
+    throw new ApiError(404, "Tweet does not exist!");
+  }
+
+  if (
+    !tweet.owner ||
+    !req.user?._id ||
+    req.user?._id.toString() !== tweet.owner.toString()
+  ) {
+    throw new ApiError(401, "You are not authorized to delete this tweet!");
+  }
+
+  const deletedTweet = await Tweet.deleteOne({ _id: tweetId });
+
+  if (deletedTweet.deletedCount <= 0) {
+    throw new ApiError(
+      500,
+      "Something went wrong while deleting the tweet in the database!"
+    );
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "The tweet has been deleted successfully."));
 });
 
 export { createTweet, getUserTweets, updateTweet, deleteTweet };
